@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoMaster · Quiz y Explorador Mundial</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c14;--surface:#0f1420;--surface2:#151d2e;--border:#1e2a3a;
+  --text:#dde8f8;--muted:#4a5a72;--radius:14px;
+  --green:#3ecf8e;--red:#e05c5c;--yellow:#f0c040;
+  --af:#e8945a;--an:#4f9eff;--as:#c47aff;--eu:#3ecf8e;--na:#f0c040;--oc:#ff7eb3;--sa:#ff6b6b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse at 15% 15%,rgba(79,158,255,.06) 0%,transparent 55%),
+  radial-gradient(ellipse at 85% 80%,rgba(196,122,255,.04) 0%,transparent 55%);
+  pointer-events:none;z-index:0;}
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:50;background:rgba(8,12,20,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0;padding:0 20px;}
+.nav-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;padding:16px 0;margin-right:24px;
+  background:linear-gradient(135deg,#4f9eff,#c47aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.nav-tab{padding:16px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{color:var(--text);border-bottom-color:#4f9eff;}
+
+/* ── SCREENS ── */
+.screen{display:none;position:relative;z-index:1;padding:32px 20px 80px;max-width:900px;margin:0 auto;}
+.screen.active{display:block;}
+
+/* ── SECTION HEADERS ── */
+.page-eyebrow{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.page-title{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,5vw,3rem);font-weight:800;
+  letter-spacing:-1px;line-height:1.05;margin-bottom:8px;}
+.page-title .accent{background:linear-gradient(135deg,#4f9eff,#3ecf8e);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text;}
+.page-sub{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:36px;}
+
+/* ════════════════════════════════
+   QUIZ
+════════════════════════════════ */
+.quiz-modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:36px;}
+.mode-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:22px 18px;cursor:pointer;transition:transform .2s,border-color .2s;position:relative;overflow:hidden;}
+.mode-card::before{content:'';position:absolute;inset:0;background:var(--mc,#4f9eff);opacity:0;transition:opacity .2s;}
+.mode-card:hover{transform:translateY(-3px);}
+.mode-card:hover::before{opacity:.05;}
+.mode-card:hover{border-color:var(--mc,#4f9eff);}
+.mode-icon{font-size:28px;margin-bottom:10px;}
+.mode-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;}
+.mode-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.mode-count{position:absolute;top:14px;right:14px;font-size:11px;color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:2px 8px;}
+
+/* progress */
+.q-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;}
+.q-back{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;
+  padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;}
+.q-back:hover{border-color:var(--text);color:var(--text);}
+.q-mode-label{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.score-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface);
+  border:1px solid var(--border);border-radius:99px;padding:4px 12px;font-size:12px;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.pbar-wrap{margin-bottom:22px;}
+.pbar-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px;}
+.pbar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;}
+.pfill{height:100%;background:linear-gradient(90deg,#4f9eff,#3ecf8e);border-radius:99px;transition:width .5s;}
+
+/* question card */
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:28px 24px;animation:slideUp .3s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.qcard-sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.qcard-num{font-family:'Syne',sans-serif;font-size:46px;font-weight:800;color:var(--border);line-height:1;margin-bottom:6px;}
+.question-text{font-size:clamp(16px,2.8vw,20px);font-weight:500;line-height:1.5;margin-bottom:6px;}
+.question-flag{font-size:44px;margin-bottom:14px;line-height:1;}
+.question-hint{font-size:13px;color:var(--muted);margin-bottom:22px;font-style:italic;}
+
+.opts{display:flex;flex-direction:column;gap:9px;}
+.opt{background:transparent;border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;
+  color:var(--text);font-family:inherit;font-size:14px;cursor:pointer;text-align:left;
+  display:flex;align-items:center;gap:12px;transition:border-color .18s,background .18s,transform .1s;}
+.opt:hover:not(:disabled){border-color:#4f9eff;background:rgba(79,158,255,.05);transform:translateX(3px);}
+.opt-l{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.opt.correct{border-color:var(--green);background:rgba(62,207,142,.07);}
+.opt.correct .opt-l{background:var(--green);border-color:var(--green);color:#080c14;}
+.opt.wrong{border-color:var(--red);background:rgba(224,92,92,.07);}
+.opt.wrong .opt-l{background:var(--red);border-color:var(--red);color:#fff;}
+.opt:disabled{cursor:default;transform:none!important;}
+
+.expl{display:none;margin-top:16px;padding:12px 15px;border-radius:8px;font-size:13px;
+  line-height:1.65;animation:fadeIn .3s ease;border-left:3px solid var(--green);
+  background:rgba(62,207,142,.05);color:#9de0c4;}
+.expl.wrong-e{border-color:var(--red);background:rgba(224,92,92,.05);color:#e8b0b0;}
+.expl.show{display:block;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+.next-btn{display:none;margin-top:18px;width:100%;padding:14px;border:none;border-radius:10px;
+  font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+  background:linear-gradient(135deg,#4f9eff,#3ecf8e);color:#fff;transition:opacity .2s;}
+.next-btn:hover{opacity:.88;}
+.next-btn.show{display:block;}
+
+/* result */
+#quiz-result{display:none;flex-direction:column;align-items:center;text-align:center;padding:20px 0 40px;}
+.grade-ring{width:140px;height:140px;border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border:4px solid #4f9eff;margin-bottom:22px;}
+.grade-big{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:#4f9eff;line-height:1;}
+.grade-of{font-size:13px;color:var(--muted);}
+.res-stats{display:flex;gap:12px;margin-bottom:24px;width:100%;max-width:480px;}
+.rstat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 10px;}
+.rstat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;line-height:1;margin-bottom:4px;}
+.rstat-lbl{font-size:12px;color:var(--muted);}
+.rstat.ok .rstat-val{color:var(--green);}
+.rstat.bad .rstat-val{color:var(--red);}
+.rstat.grade .rstat-val{color:#4f9eff;}
+.dot-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;width:100%;max-width:480px;margin-bottom:28px;}
+.rdot{height:7px;border-radius:2px;}
+.rdot.ok{background:var(--green);}
+.rdot.bad{background:var(--red);}
+.res-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.btn-pri{padding:13px 32px;border:none;border-radius:10px;font-family:inherit;font-size:14px;
+  font-weight:600;cursor:pointer;background:linear-gradient(135deg,#4f9eff,#3ecf8e);color:#fff;transition:opacity .2s;}
+.btn-pri:hover{opacity:.88;}
+.btn-sec{padding:13px 32px;border:1px solid var(--border);border-radius:10px;font-family:inherit;
+  font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--text);transition:border-color .2s;}
+.btn-sec:hover{border-color:var(--text);}
+
+/* ════════════════════════════════
+   EXPLORER
+════════════════════════════════ */
+.search-bar{display:flex;gap:10px;margin-bottom:28px;}
+.search-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 16px;color:var(--text);font-family:inherit;font-size:14px;outline:none;
+  transition:border-color .2s;}
+.search-input:focus{border-color:#4f9eff;}
+.search-input::placeholder{color:var(--muted);}
+
+.continents-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+
+.cont-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;
+  transition:border-color .2s;}
+.cont-card:hover{border-color:var(--cc,#4f9eff);}
+.cont-header{padding:20px 18px;cursor:pointer;display:flex;align-items:center;gap:14px;user-select:none;}
+.cont-icon{font-size:28px;flex-shrink:0;}
+.cont-info{flex:1;}
+.cont-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;}
+.cont-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.cont-arrow{font-size:12px;color:var(--muted);transition:transform .25s;}
+.cont-arrow.open{transform:rotate(90deg);}
+.cont-body{display:none;border-top:1px solid var(--border);}
+.cont-body.open{display:block;}
+
+.country-item{border-bottom:1px solid var(--border);overflow:hidden;}
+.country-item:last-child{border-bottom:none;}
+.country-header{padding:12px 18px 12px 52px;cursor:pointer;display:flex;align-items:center;gap:10px;
+  transition:background .15s;user-select:none;}
+.country-header:hover{background:rgba(255,255,255,.03);}
+.country-flag{font-size:18px;flex-shrink:0;}
+.country-name-wrap{flex:1;}
+.country-name{font-size:14px;font-weight:600;}
+.country-cap{font-size:11px;color:var(--muted);margin-top:1px;}
+.country-arrow{font-size:11px;color:var(--muted);transition:transform .2s;}
+.country-arrow.open{transform:rotate(90deg);}
+.city-list{display:none;padding:8px 18px 12px 80px;background:rgba(0,0,0,.2);}
+.city-list.open{display:flex;flex-wrap:wrap;gap:6px;}
+.city-tag{background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  padding:4px 10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.city-tag.capital{border-color:var(--cc,#4f9eff);color:var(--text);}
+.city-tag .cap-star{font-size:10px;}
+
+/* search results */
+.search-results{margin-top:0;}
+.search-result-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
+.sri-flag{font-size:22px;}
+.sri-info{flex:1;}
+.sri-name{font-size:15px;font-weight:600;}
+.sri-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.sri-badge{font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--muted);}
+
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--surface2);border:1px solid var(--border);border-radius:99px;
+  padding:10px 20px;font-size:13px;z-index:200;opacity:0;pointer-events:none;
+  transition:opacity .3s;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+@media(max-width:480px){
+  .quiz-modes{grid-template-columns:1fr 1fr;}
+  .mode-card{padding:16px 14px;}
+  .continents-grid{grid-template-columns:1fr;}
+  .res-stats{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">🌍 GeoMaster</div>
+  <div class="nav-tab active" onclick="showTab('quiz')">Quiz</div>
+  <div class="nav-tab" onclick="showTab('explorer')">Explorador</div>
+</nav>
+
+<!-- ══════════ QUIZ SCREEN ══════════ -->
+<div class="screen active" id="tab-quiz">
+
+  <!-- MODE SELECT -->
+  <div id="quiz-home">
+    <div class="page-eyebrow">Quiz de Geografía</div>
+    <h1 class="page-title">¿Cuánto sabes del <span class="accent">mundo</span>?</h1>
+    <p class="page-sub">Elige un modo. Las preguntas se mezclan aleatoriamente cada sesión.</p>
+    <div class="quiz-modes" id="mode-grid"></div>
+  </div>
+
+  <!-- QUESTION -->
+  <div id="quiz-playing" style="display:none">
+    <div class="q-topbar">
+      <button class="q-back" onclick="backToModes()">← Modos</button>
+      <div class="q-mode-label" id="q-mode-label"></div>
+      <div class="score-pill"><span class="sdot"></span><span id="score-live">0 ✓</span></div>
+    </div>
+    <div class="pbar-wrap">
+      <div class="pbar-meta"><span id="q-counter">1 / 50</span><span id="q-pct">0%</span></div>
+      <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
+    </div>
+    <div class="qcard" id="qcard">
+      <div class="qcard-sub" id="qcard-sub"></div>
+      <div class="qcard-num" id="qcard-num">01</div>
+      <div class="question-flag" id="q-flag" style="display:none"></div>
+      <div class="question-text" id="q-text"></div>
+      <div class="question-hint" id="q-hint"></div>
+      <div class="opts" id="opts"></div>
+      <div class="expl" id="expl"></div>
+      <button class="next-btn" id="next-btn" onclick="nextQ()">Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="quiz-result">
+    <div class="grade-ring" id="grade-ring">
+      <div class="grade-big" id="grade-big">0.0</div>
+      <div class="grade-of">/ 10</div>
+    </div>
+    <h2 style="font-family:'Syne',sans-serif;font-size:1.8rem;margin-bottom:8px;" id="res-title"></h2>
+    <p style="color:var(--muted);font-size:14px;max-width:420px;line-height:1.6;margin-bottom:22px;" id="res-msg"></p>
+    <div class="res-stats">
+      <div class="rstat ok"><div class="rstat-val" id="r-ok">0</div><div class="rstat-lbl">Correctas</div></div>
+      <div class="rstat bad"><div class="rstat-val" id="r-bad">0</div><div class="rstat-lbl">Incorrectas</div></div>
+      <div class="rstat grade"><div class="rstat-val" id="r-pct">0%</div><div class="rstat-lbl">Porcentaje</div></div>
+    </div>
+    <div class="dot-grid" id="dot-grid"></div>
+    <div class="res-btns">
+      <button class="btn-pri" id="retry-btn" onclick="retryMode()">Reintentar</button>
+      <button class="btn-sec" onclick="backToModes()">← Modos</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════ EXPLORER SCREEN ══════════ -->
+<div class="screen" id="tab-explorer">
+  <div class="page-eyebrow">Explorador Mundial</div>
+  <h1 class="page-title">El <span class="accent">mundo</span> completo</h1>
+  <p class="page-sub">Explora continentes, países y ciudades. Haz clic para expandir o colapsar. ⭐ = capital nacional.</p>
+
+  <div class="search-bar">
+    <input class="search-input" id="search-input" placeholder="🔍  Buscar país, capital o ciudad..." oninput="doSearch(this.value)">
+  </div>
+
+  <div id="search-results-wrap" style="display:none" class="search-results"></div>
+  <div id="continents-wrap" class="continents-grid"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// WORLD DATA
+// ════════════════════════════════════════════════════════════════════════
+const WORLD = [
+  {id:"af",name:"África",icon:"🌍",color:"#e8945a",countries:[
+    {name:"Argelia",flag:"🇩🇿",capital:"Argel",cities:["Argel","Orán","Constantina","Annaba","Blida","Batna","Djelfa","Sétif"]},
+    {name:"Angola",flag:"🇦🇴",capital:"Luanda",cities:["Luanda","Huambo","Lobito","Benguela","Kuito","Lubango"]},
+    {name:"Benín",flag:"🇧🇯",capital:"Porto-Novo",cities:["Porto-Novo","Cotonú","Parakou","Djougou","Bohicon"]},
+    {name:"Botsuana",flag:"🇧🇼",capital:"Gaborone",cities:["Gaborone","Francistown","Molepolole","Maun","Serowe"]},
+    {name:"Burkina Faso",flag:"🇧🇫",capital:"Uagadugú",cities:["Uagadugú","Bobo-Dioulasso","Koudougou","Ouahigouya"]},
+    {name:"Burundi",flag:"🇧🇮",capital:"Gitega",cities:["Gitega","Buyumbura","Ngozi","Rumonge","Muyinga"]},
+    {name:"Camerún",flag:"🇨🇲",capital:"Yaundé",cities:["Yaundé","Duala","Bafoussam","Bamenda","Garoua","Maroua"]},
+    {name:"Cabo Verde",flag:"🇨🇻",capital:"Praia",cities:["Praia","Mindelo","Santa Maria","Assomada"]},
+    {name:"Chad",flag:"🇹🇩",capital:"Yamena",cities:["Yamena","Moundou","Sarh","Abéché","Kélo"]},
+    {name:"Comoras",flag:"🇰🇲",capital:"Moroni",cities:["Moroni","Mutsamudu","Fomboni"]},
+    {name:"Congo (Rep.)",flag:"🇨🇬",capital:"Brazzaville",cities:["Brazzaville","Pointe-Noire","Dolisie","N'kayi"]},
+    {name:"Congo (RDC)",flag:"🇨🇩",capital:"Kinshasa",cities:["Kinshasa","Lubumbashi","Mbuji-Mayi","Kananga","Kisangani","Bukavu","Goma"]},
+    {name:"Costa de Marfil",flag:"🇨🇮",capital:"Yamusukro",cities:["Yamusukro","Abiyán","Bouaké","San Pédro","Man"]},
+    {name:"Djibouti",flag:"🇩🇯",capital:"Yibuti",cities:["Yibuti","Ali Sabieh","Dikhil","Tadjourah"]},
+    {name:"Egipto",flag:"🇪🇬",capital:"El Cairo",cities:["El Cairo","Alejandría","Giza","Asuán","Luxor","Port Said","Suez","Sharm el-Sheij"]},
+    {name:"Eritrea",flag:"🇪🇷",capital:"Asmara",cities:["Asmara","Keren","Masawa","Assab"]},
+    {name:"Etiopía",flag:"🇪🇹",capital:"Adís Abeba",cities:["Adís Abeba","Dire Dawa","Mek'ele","Gondar","Hawassa","Bahir Dar","Jimma"]},
+    {name:"Gabón",flag:"🇬🇦",capital:"Libreville",cities:["Libreville","Port-Gentil","Franceville","Oyem"]},
+    {name:"Gambia",flag:"🇬🇲",capital:"Banjul",cities:["Banjul","Serekunda","Brikama","Bakau"]},
+    {name:"Ghana",flag:"🇬🇭",capital:"Acra",cities:["Acra","Kumasi","Sekondi-Takoradi","Tamale","Ashaiman","Tema"]},
+    {name:"Guinea",flag:"🇬🇳",capital:"Conakri",cities:["Conakri","Nzérékoré","Kindia","Kankan","Labé"]},
+    {name:"Guinea-Bisáu",flag:"🇬🇼",capital:"Bisáu",cities:["Bisáu","Bafatá","Gabú","Canchungo"]},
+    {name:"Guinea Ecuatorial",flag:"🇬🇶",capital:"Malabo",cities:["Malabo","Bata","Ebebiyín","Aconibe"]},
+    {name:"Kenia",flag:"🇰🇪",capital:"Nairobi",cities:["Nairobi","Mombasa","Kisumu","Nakuru","Eldoret","Thika"]},
+    {name:"Lesoto",flag:"🇱🇸",capital:"Maseru",cities:["Maseru","Teyateyaneng","Mafeteng","Leribe"]},
+    {name:"Liberia",flag:"🇱🇷",capital:"Monrovia",cities:["Monrovia","Gbarnga","Kakata","Bensonville","Harper"]},
+    {name:"Libia",flag:"🇱🇾",capital:"Trípoli",cities:["Trípoli","Bengasi","Misrata","Tobruk","Sirte","Sebha"]},
+    {name:"Madagascar",flag:"🇲🇬",capital:"Antananarivo",cities:["Antananarivo","Toamasina","Antsirabe","Fianarantsoa","Mahajanga","Toliara"]},
+    {name:"Malaui",flag:"🇲🇼",capital:"Lilongwe",cities:["Lilongwe","Blantyre","Mzuzu","Zomba","Kasungu"]},
+    {name:"Mali",flag:"🇲🇱",capital:"Bamako",cities:["Bamako","Sikasso","Mopti","Koutiala","Kayes","Tombouctú"]},
+    {name:"Marruecos",flag:"🇲🇦",capital:"Rabat",cities:["Rabat","Casablanca","Fez","Marrakech","Tánger","Agadir","Meknes","Oujda"]},
+    {name:"Mauritania",flag:"🇲🇷",capital:"Nuakchot",cities:["Nuakchot","Nuadibú","Rosso","Zuwarat"]},
+    {name:"Mauricio",flag:"🇲🇺",capital:"Port Louis",cities:["Port Louis","Beau Bassin","Vacoas","Curepipe"]},
+    {name:"Mozambique",flag:"🇲🇿",capital:"Maputo",cities:["Maputo","Matola","Nampula","Beira","Chimoio","Nacala"]},
+    {name:"Namibia",flag:"🇳🇦",capital:"Windhoek",cities:["Windhoek","Rundu","Walvis Bay","Oshakati","Swakopmund"]},
+    {name:"Níger",flag:"🇳🇪",capital:"Niamey",cities:["Niamey","Zinder","Maradi","Agadez","Tahoua"]},
+    {name:"Nigeria",flag:"🇳🇬",capital:"Abuya",cities:["Abuya","Lagos","Kano","Ibadan","Kaduna","Enugu","Port Harcourt","Benin City","Maiduguri"]},
+    {name:"Ruanda",flag:"🇷🇼",capital:"Kigali",cities:["Kigali","Gitarama","Butare","Ruhengeri","Gisenyi"]},
+    {name:"Santo Tomé y Príncipe",flag:"🇸🇹",capital:"Santo Tomé",cities:["Santo Tomé","Neves","Santana","Trindade"]},
+    {name:"Senegal",flag:"🇸🇳",capital:"Dakar",cities:["Dakar","Thiès","Kaolack","Ziguinchor","Saint-Louis","Touba"]},
+    {name:"Seychelles",flag:"🇸🇨",capital:"Victoria",cities:["Victoria","Anse Boileau","Beau Vallon"]},
+    {name:"Sierra Leona",flag:"🇸🇱",capital:"Freetown",cities:["Freetown","Bo","Kenema","Koidu","Makeni"]},
+    {name:"Somalia",flag:"🇸🇴",capital:"Mogadiscio",cities:["Mogadiscio","Hargeisa","Bosaso","Kismayo","Berbera","Merca"]},
+    {name:"Sudáfrica",flag:"🇿🇦",capital:"Pretoria / Ciudad del Cabo / Bloemfontein",cities:["Johannesburgo","Ciudad del Cabo","Durban","Pretoria","Port Elizabeth","East London","Bloemfontein","Soweto","Tshwane"]},
+    {name:"Sudán",flag:"🇸🇩",capital:"Jartún",cities:["Jartún","Omdurmán","Port Sudán","Kassala","Obeid","Wad Medani"]},
+    {name:"Sudán del Sur",flag:"🇸🇸",capital:"Yuba",cities:["Yuba","Wau","Malakal","Torit"]},
+    {name:"Suazilandia (Eswatini)",flag:"🇸🇿",capital:"Mbabane",cities:["Mbabane","Manzini","Lobamba","Siteki"]},
+    {name:"Tanzania",flag:"🇹🇿",capital:"Dodoma",cities:["Dodoma","Dar es Salaam","Mwanza","Arusha","Moshi","Zanzibar","Morogoro","Tanga"]},
+    {name:"Togo",flag:"🇹🇬",capital:"Lomé",cities:["Lomé","Sokodé","Kara","Kpalimé","Atakpamé"]},
+    {name:"Túnez",flag:"🇹🇳",capital:"Túnez",cities:["Túnez","Sfax","Susa","Kairouan","Bizerta","Gabés"]},
+    {name:"Uganda",flag:"🇺🇬",capital:"Kampala",cities:["Kampala","Gulu","Lira","Mbarara","Jinja","Mbale"]},
+    {name:"Yibuti",flag:"🇩🇯",capital:"Yibuti (ciudad)",cities:["Yibuti","Ali Sabieh","Dikhil"]},
+    {name:"Zambia",flag:"🇿🇲",capital:"Lusaka",cities:["Lusaka","Kitwe","Ndola","Kabwe","Chingola","Livingstone"]},
+    {name:"Zimbabue",flag:"🇿🇼",capital:"Harare",cities:["Harare","Bulawayo","Chitungwiza","Mutare","Gweru","Masvingo"]},
+  ]},
+
+  {id:"an",name:"Antártida",icon:"🧊",color:"#4f9eff",countries:[
+    {name:"Territorio Antártico",flag:"🏔️",capital:"Sin capital permanente",cities:["Base McMurdo (EE.UU.)","Base Amundsen-Scott (Polo Sur)","Base Vostok (Rusia)","Base Rothera (UK)","Base Concordia (EU/IT)","Base Esperanza (Argentina)","Base Artigas (Uruguay)","Base Presidente Eduardo Frei (Chile)"]},
+  ]},
+
+  {id:"as",name:"Asia",icon:"🌏",color:"#c47aff",countries:[
+    {name:"Afganistán",flag:"🇦🇫",capital:"Kabul",cities:["Kabul","Kandahar","Herat","Mazar-i-Sharif","Jalalabad","Kunduz"]},
+    {name:"Arabia Saudita",flag:"🇸🇦",capital:"Riad",cities:["Riad","Yeda","La Meca","Medina","Dammam","Tabuk","Jaibar"]},
+    {name:"Armenia",flag:"🇦🇲",capital:"Ereván",cities:["Ereván","Gyumri","Vanadzor","Vagharshapat"]},
+    {name:"Azerbaiyán",flag:"🇦🇿",capital:"Bakú",cities:["Bakú","Ganja","Sumqayit","Mingachevir","Nakhchivan"]},
+    {name:"Baréin",flag:"🇧🇭",capital:"Manama",cities:["Manama","Rifaa","Al Muharraq","Hamad Town"]},
+    {name:"Bangladés",flag:"🇧🇩",capital:"Daca",cities:["Daca","Chittagong","Khulna","Rajshahi","Sylhet","Comilla","Narayanganj"]},
+    {name:"Bután",flag:"🇧🇹",capital:"Timbu",cities:["Timbu","Phuntsholing","Paro","Punakha"]},
+    {name:"Brunéi",flag:"🇧🇳",capital:"Bandar Seri Begawan",cities:["Bandar Seri Begawan","Kuala Belait","Seria","Tutong"]},
+    {name:"Camboya",flag:"🇰🇭",capital:"Nom Pen",cities:["Nom Pen","Siem Riep","Battambang","Sihanoukville","Preah Sihanouk"]},
+    {name:"China",flag:"🇨🇳",capital:"Pekín",cities:["Pekín","Shanghái","Guangzhou","Shenzhen","Chengdu","Wuhan","Hangzhou","Xi'an","Nanjing","Chongqing","Tianjin","Shenyang","Harbin","Qingdao","Dalian","Suzhou","Zhengzhou","Kunming"]},
+    {name:"Chipre",flag:"🇨🇾",capital:"Nicosia",cities:["Nicosia","Limassol","Larnaca","Famagusta","Pafos"]},
+    {name:"Corea del Norte",flag:"🇰🇵",capital:"Pionyang",cities:["Pionyang","Hamhung","Chongjin","Nampo","Wonsan","Sinuiju"]},
+    {name:"Corea del Sur",flag:"🇰🇷",capital:"Seúl",cities:["Seúl","Busan","Incheon","Daegu","Daejeon","Gwangju","Ulsan","Suwon","Jeju"]},
+    {name:"Emiratos Árabes Unidos",flag:"🇦🇪",capital:"Abu Dabi",cities:["Abu Dabi","Dubái","Sharjah","Al Ain","Ajman","Ras al-Jaima"]},
+    {name:"Filipinas",flag:"🇵🇭",capital:"Manila",cities:["Manila","Cebú","Davao","Zamboanga","Caloocan","Quezon City","Antipolo","Pasig","Taguig"]},
+    {name:"Georgia",flag:"🇬🇪",capital:"Tiflis",cities:["Tiflis","Kutaisi","Batumi","Rustavi","Zugdidi","Gori"]},
+    {name:"India",flag:"🇮🇳",capital:"Nueva Delhi",cities:["Nueva Delhi","Mumbai","Bangalore","Hyderabad","Chennai","Calcuta","Ahmedabad","Pune","Surat","Jaipur","Lucknow","Kanpur","Nagpur","Indore","Bhopal","Agra","Varanasi","Amritsar","Kolkata"]},
+    {name:"Indonesia",flag:"🇮🇩",capital:"Yakarta",cities:["Yakarta","Surabaya","Bandung","Medan","Bekasi","Tangerang","Semarang","Makassar","Palembang","Bali","Yogyakarta","Bogor"]},
+    {name:"Irak",flag:"🇮🇶",capital:"Bagdad",cities:["Bagdad","Basora","Mosul","Arbil","Kirkuk","Suleimaniya","Nayaf","Kerbala"]},
+    {name:"Irán",flag:"🇮🇷",capital:"Teherán",cities:["Teherán","Mashhad","Isfahán","Karaj","Tabriz","Shiraz","Qom","Ahvaz","Kermanshah"]},
+    {name:"Israel",flag:"🇮🇱",capital:"Jerusalén",cities:["Jerusalén","Tel Aviv","Haifa","Rishon LeZion","Petah Tikva","Ashdod","Netanya","Beer Sheva","Bat Yam"]},
+    {name:"Japón",flag:"🇯🇵",capital:"Tokio",cities:["Tokio","Osaka","Kioto","Hiroshima","Nagoya","Yokohama","Kobe","Sapporo","Fukuoka","Kawasaki","Sendai","Chiba","Sakai","Kumamoto","Nara","Nikko"]},
+    {name:"Jordania",flag:"🇯🇴",capital:"Amán",cities:["Amán","Zarka","Irbid","Rusia","Aqaba","Petra"]},
+    {name:"Kazajistán",flag:"🇰🇿",capital:"Astana",cities:["Astana","Almaty","Shimkent","Karagandá","Aktobe","Taraz","Pavlodar","Semey"]},
+    {name:"Kirguistán",flag:"🇰🇬",capital:"Biskek",cities:["Biskek","Osh","Jalal-Abad","Karakol","Tokmok"]},
+    {name:"Kuwait",flag:"🇰🇼",capital:"Kuwait City",cities:["Kuwait City","Jahrah","Salmiya","Hawalli","Farwaniyya"]},
+    {name:"Laos",flag:"🇱🇦",capital:"Vientián",cities:["Vientián","Savannakhet","Pakse","Luang Prabang"]},
+    {name:"Líbano",flag:"🇱🇧",capital:"Beirut",cities:["Beirut","Trípoli","Sidón","Tiro","Zahle","Jounieh"]},
+    {name:"Malasia",flag:"🇲🇾",capital:"Kuala Lumpur",cities:["Kuala Lumpur","George Town","Ipoh","Johor Bahru","Shah Alam","Petaling Jaya","Subang Jaya","Kota Kinabalu","Kuching","Malaca"]},
+    {name:"Maldivas",flag:"🇲🇻",capital:"Malé",cities:["Malé","Addu City","Fuvahmulah","Kulhudhuffushi"]},
+    {name:"Mongolia",flag:"🇲🇳",capital:"Ulán Bator",cities:["Ulán Bator","Erdenet","Darkhan","Choibalsan"]},
+    {name:"Myanmar (Birmania)",flag:"🇲🇲",capital:"Naipyidó",cities:["Naipyidó","Rangún","Mandalay","Mawlamyine","Bago","Pathein","Meiktila"]},
+    {name:"Nepal",flag:"🇳🇵",capital:"Katmandú",cities:["Katmandú","Pokhara","Patan","Biratnagar","Birgunj","Dharan"]},
+    {name:"Omán",flag:"🇴🇲",capital:"Mascate",cities:["Mascate","Salalah","Sohar","Sur","Nizwa","Rustaq"]},
+    {name:"Pakistán",flag:"🇵🇰",capital:"Islamabad",cities:["Islamabad","Karachi","Lahore","Faisalabad","Rawalpindi","Peshawar","Quetta","Multan","Hyderabad","Gujranwala"]},
+    {name:"Palestina",flag:"🇵🇸",capital:"Ramala (reconocida)",cities:["Gaza","Ramala","Nablus","Hebrón","Jenín","Tulkarem","Yericó"]},
+    {name:"Qatar",flag:"🇶🇦",capital:"Doha",cities:["Doha","Al Rayyan","Al Wakrah","Al Khor","Umm Salal"]},
+    {name:"Singapur",flag:"🇸🇬",capital:"Singapur",cities:["Singapur (ciudad-estado)","Jurong East","Woodlands","Tampines","Ang Mo Kio"]},
+    {name:"Siria",flag:"🇸🇾",capital:"Damasco",cities:["Damasco","Alepo","Homs","Hama","Latakia","Deir ez-Zor","Raqqa"]},
+    {name:"Sri Lanka",flag:"🇱🇰",capital:"Sri Jayawardenepura Kotte",cities:["Sri Jayawardenepura Kotte","Colombo","Kandy","Galle","Jaffna","Negombo","Trincomalee"]},
+    {name:"Tailandia",flag:"🇹🇭",capital:"Bangkok",cities:["Bangkok","Chiang Mai","Pattaya","Phuket","Hat Yai","Nakhon Ratchasima","Udon Thani","Khon Kaen","Ayutthaya"]},
+    {name:"Taiwán",flag:"🇹🇼",capital:"Taipéi",cities:["Taipéi","Nueva Taipéi","Taichung","Kaohsiung","Tainan","Taoyuan","Keelung","Hsinchu"]},
+    {name:"Tayikistán",flag:"🇹🇯",capital:"Dusambé",cities:["Dusambé","Juyand","Kurgan-Tyube","Jojand","Kulob"]},
+    {name:"Timor Oriental",flag:"🇹🇱",capital:"Dili",cities:["Dili","Baucau","Ermera","Maliana"]},
+    {name:"Turkmenistán",flag:"🇹🇲",capital:"Asjabad",cities:["Asjabad","Türkmenabat","Dashoguz","Mary","Balkanabat"]},
+    {name:"Turquía",flag:"🇹🇷",capital:"Ankara",cities:["Ankara","Estambul","Esmirna","Bursa","Adana","Gaziantep","Konya","Kayseri","Antalya","Mersin","Diyarbakir","Trabzon","Estambul"]},
+    {name:"Uzbekistán",flag:"🇺🇿",capital:"Taskent",cities:["Taskent","Samarcanda","Namangan","Andiyán","Nukus","Bujara","Fergana","Karshi"]},
+    {name:"Vietnam",flag:"🇻🇳",capital:"Hanói",cities:["Hanói","Ho Chi Minh (Saigón)","Da Nang","Hai Phong","Can Tho","Biên Hòa","Huế","Nha Trang","Da Lat","Vung Tau"]},
+    {name:"Yemen",flag:"🇾🇪",capital:"Saná",cities:["Saná","Adén","Taiz","Al Hudayda","Mukalla","Ibb","Dhammar"]},
+  ]},
+
+  {id:"eu",name:"Europa",icon:"🌍",color:"#3ecf8e",countries:[
+    {name:"Albania",flag:"🇦🇱",capital:"Tirana",cities:["Tirana","Durrës","Vlorë","Shkodër","Fier","Elbasan","Korçë"]},
+    {name:"Alemania",flag:"🇩🇪",capital:"Berlín",cities:["Berlín","Hamburgo","Múnich","Colonia","Fráncfort","Stuttgart","Düsseldorf","Leipzig","Dortmund","Bremen","Hanóver","Dresde","Nuremberg","Duisburgo","Bochum"]},
+    {name:"Andorra",flag:"🇦🇩",capital:"Andorra la Vella",cities:["Andorra la Vella","Escaldes-Engordany","Sant Julià de Lòria","Encamp"]},
+    {name:"Austria",flag:"🇦🇹",capital:"Viena",cities:["Viena","Graz","Linz","Salzburgo","Innsbruck","Klagenfurt","Villach","Wels"]},
+    {name:"Bélgica",flag:"🇧🇪",capital:"Bruselas",cities:["Bruselas","Amberes","Gante","Brujas","Lieja","Namur","Lovaina","Mons","Charleroi"]},
+    {name:"Bielorrusia",flag:"🇧🇾",capital:"Minsk",cities:["Minsk","Gomel","Mogilev","Vitebsk","Grodno","Brest","Bobruisk"]},
+    {name:"Bosnia y Herzegovina",flag:"🇧🇦",capital:"Sarajevo",cities:["Sarajevo","Banja Luka","Tuzla","Zenica","Mostar","Bihać"]},
+    {name:"Bulgaria",flag:"🇧🇬",capital:"Sofía",cities:["Sofía","Plovdiv","Varna","Burgas","Ruse","Stara Zagora","Pleven"]},
+    {name:"Croacia",flag:"🇭🇷",capital:"Zagreb",cities:["Zagreb","Split","Rijeka","Osijek","Zadar","Dubrovnik","Slavonski Brod"]},
+    {name:"Dinamarca",flag:"🇩🇰",capital:"Copenhague",cities:["Copenhague","Aarhus","Odense","Aalborg","Esbjerg","Randers","Kolding"]},
+    {name:"Eslovaquia",flag:"🇸🇰",capital:"Bratislava",cities:["Bratislava","Košice","Prešov","Žilina","Nitra","Banská Bystrica","Trnava"]},
+    {name:"Eslovenia",flag:"🇸🇮",capital:"Liubliana",cities:["Liubliana","Maribor","Celje","Kranj","Velenje","Koper"]},
+    {name:"España",flag:"🇪🇸",capital:"Madrid",cities:["Madrid","Barcelona","Valencia","Sevilla","Zaragoza","Málaga","Murcia","Palma","Las Palmas","Bilbao","Alicante","Córdoba","Valladolid","Vigo","Gijón","Granada","A Coruña","Vitoria","Toledo","Salamanca"]},
+    {name:"Estonia",flag:"🇪🇪",capital:"Tallin",cities:["Tallin","Tartu","Narva","Pärnu","Kohtla-Järve"]},
+    {name:"Finlandia",flag:"🇫🇮",capital:"Helsinki",cities:["Helsinki","Espoo","Tampere","Vantaa","Oulu","Turku","Jyväskylä","Lahti","Kuopio"]},
+    {name:"Francia",flag:"🇫🇷",capital:"París",cities:["París","Marsella","Lyon","Toulouse","Niza","Nantes","Estrasburgo","Montpellier","Burdeos","Lille","Rennes","Grenoble","Reims","Saint-Étienne","Toulon","Angers","Dijon","Nîmes","Cannes","Niza"]},
+    {name:"Grecia",flag:"🇬🇷",capital:"Atenas",cities:["Atenas","Salónica","Patras","Heraclión","Larisa","Volos","Ioánina","Calamata","Rodas","Santorini","Mitilene"]},
+    {name:"Hungría",flag:"🇭🇺",capital:"Budapest",cities:["Budapest","Debrecen","Miskolc","Szeged","Pécs","Győr","Nyíregyháza","Kecskemét"]},
+    {name:"Irlanda",flag:"🇮🇪",capital:"Dublín",cities:["Dublín","Cork","Limerick","Galway","Waterford","Drogheda","Dundalk","Swords"]},
+    {name:"Islandia",flag:"🇮🇸",capital:"Reikiavik",cities:["Reikiavik","Kópavogur","Hafnarfjörður","Akureyri","Reykjanesbær"]},
+    {name:"Italia",flag:"🇮🇹",capital:"Roma",cities:["Roma","Milán","Nápoles","Turín","Palermo","Génova","Bolonia","Florencia","Bari","Catania","Venecia","Verona","Mesina","Padua","Trieste","Tarento","Brescia","Parma","Módena","Prato","Rávena"]},
+    {name:"Kosovo",flag:"🇽🇰",capital:"Pristina",cities:["Pristina","Prizren","Peja","Mitrovica","Gjakova"]},
+    {name:"Letonia",flag:"🇱🇻",capital:"Riga",cities:["Riga","Daugavpils","Liepāja","Jelgava","Jūrmala","Ventspils"]},
+    {name:"Liechtenstein",flag:"🇱🇮",capital:"Vaduz",cities:["Vaduz","Schaan","Balzers","Eschen","Mauren"]},
+    {name:"Lituania",flag:"🇱🇹",capital:"Vilna",cities:["Vilna","Kaunas","Klaipeda","Šiauliai","Panevėžys"]},
+    {name:"Luxemburgo",flag:"🇱🇺",capital:"Luxemburgo (ciudad)",cities:["Luxemburgo","Esch-sur-Alzette","Dudelange","Differdange","Schifflange"]},
+    {name:"Macedonia del Norte",flag:"🇲🇰",capital:"Skopie",cities:["Skopie","Bitola","Kumanovo","Prilep","Tetovo","Ohrid"]},
+    {name:"Malta",flag:"🇲🇹",capital:"La Valeta",cities:["La Valeta","Birkirkara","Mosta","Qormi","San Ġwann","Żabbar"]},
+    {name:"Mónaco",flag:"🇲🇨",capital:"Mónaco",cities:["Mónaco-Ville","Monte Carlo","La Condamine","Fontvieille"]},
+    {name:"Montenegro",flag:"🇲🇪",capital:"Podgorica",cities:["Podgorica","Nikšić","Bijelo Polje","Herceg Novi","Bar","Pljevlja"]},
+    {name:"Noruega",flag:"🇳🇴",capital:"Oslo",cities:["Oslo","Bergen","Trondheim","Stavanger","Drammen","Kristiansand","Fredrikstad","Tromsø"]},
+    {name:"Países Bajos",flag:"🇳🇱",capital:"Ámsterdam",cities:["Ámsterdam","La Haya","Róterdam","Utrecht","Eindhoven","Tilburg","Groninga","Almere","Breda","Nijmegen"]},
+    {name:"Polonia",flag:"🇵🇱",capital:"Varsovia",cities:["Varsovia","Cracovia","Łódź","Wroclaw","Poznań","Gdansk","Szczecin","Bydgoszcz","Lublin","Katowice","Białystok"]},
+    {name:"Portugal",flag:"🇵🇹",capital:"Lisboa",cities:["Lisboa","Oporto","Vila Nova de Gaia","Amadora","Braga","Funchal","Coimbra","Setúbal","Aveiro","Faro","Évora"]},
+    {name:"Reino Unido",flag:"🇬🇧",capital:"Londres",cities:["Londres","Birmingham","Leeds","Glasgow","Sheffield","Bradford","Mánchester","Edimburgo","Liverpool","Bristol","Cardiff","Coventry","Belfast","Leicester","Nottingham","Dublín","Oxford","Cambridge","Bath","York","Inverness"]},
+    {name:"República Checa",flag:"🇨🇿",capital:"Praga",cities:["Praga","Brno","Ostrava","Plzeň","Liberec","Olomouc","Ústí nad Labem","Hradec Králové","České Budějovice"]},
+    {name:"Rumania",flag:"🇷🇴",capital:"Bucarest",cities:["Bucarest","Cluj-Napoca","Timișoara","Iași","Constanza","Craiova","Brașov","Galați","Ploiești","Oradea"]},
+    {name:"Rusia",flag:"🇷🇺",capital:"Moscú",cities:["Moscú","San Petersburgo","Novosibirsk","Ekaterimburgo","Kazán","Nizhni Nóvgorod","Cheliábinsk","Omsk","Samara","Ufa","Rostov del Don","Krasnodar","Vladivostok","Kaliningrado","Irkutsk","Yaroslavl","Murmansk","Arjángelsk"]},
+    {name:"San Marino",flag:"🇸🇲",capital:"San Marino (ciudad)",cities:["San Marino","Serravalle","Borgo Maggiore","Dogana","Acquaviva"]},
+    {name:"Serbia",flag:"🇷🇸",capital:"Belgrado",cities:["Belgrado","Novi Sad","Niš","Kragujevac","Subotica","Zrenjanin","Pančevo","Čačak"]},
+    {name:"Suecia",flag:"🇸🇪",capital:"Estocolmo",cities:["Estocolmo","Gotemburgo","Malmö","Uppsala","Västerås","Örebro","Linköping","Helsingborg","Jönköping","Umeå","Kiruna"]},
+    {name:"Suiza",flag:"🇨🇭",capital:"Berna",cities:["Berna","Zúrich","Ginebra","Basilea","Lausana","Winterthur","Lucerna","St. Gallen","Lugano","Biel/Bienne"]},
+    {name:"Ucrania",flag:"🇺🇦",capital:"Kiev",cities:["Kiev","Járkov","Odesa","Dnipro","Donetsk","Zaporizhzhia","Lviv","Kryvyi Rih","Mikolaiv","Mariúpol","Lugansk","Vinnytsia","Poltava","Chernivtsi"]},
+    {name:"Vaticano",flag:"🇻🇦",capital:"Ciudad del Vaticano",cities:["Ciudad del Vaticano (estado completo)"]},
+  ]},
+
+  {id:"na",name:"América del Norte",icon:"🌎",color:"#f0c040",countries:[
+    {name:"Antigua y Barbuda",flag:"🇦🇬",capital:"Saint John's",cities:["Saint John's","Codrington","All Saints"]},
+    {name:"Bahamas",flag:"🇧🇸",capital:"Nasáu",cities:["Nasáu","Freeport","West End","Cooper's Town"]},
+    {name:"Barbados",flag:"🇧🇧",capital:"Bridgetown",cities:["Bridgetown","Speightstown","Oistins","Bathsheba"]},
+    {name:"Belice",flag:"🇧🇿",capital:"Belmopán",cities:["Belmopán","Ciudad de Belice","San Ignacio","Orange Walk","Dangriga"]},
+    {name:"Canadá",flag:"🇨🇦",capital:"Ottawa",cities:["Ottawa","Toronto","Montreal","Vancouver","Calgary","Edmonton","Quebec","Winnipeg","Hamilton","Kitchener","Halifax","Victoria","St. John's","Regina","Saskatoon","Kelowna","Windsor"]},
+    {name:"Costa Rica",flag:"🇨🇷",capital:"San José",cities:["San José","Alajuela","Desamparados","San Carlos","Pérez Zeledón","Cartago","Heredia","Liberia","Limón","Puntarenas"]},
+    {name:"Cuba",flag:"🇨🇺",capital:"La Habana",cities:["La Habana","Santiago de Cuba","Holguín","Camagüey","Santa Clara","Guantánamo","Las Tunas","Bayamo","Matanzas","Cienfuegos","Pinar del Río","Manzanillo"]},
+    {name:"Dominica",flag:"🇩🇲",capital:"Roseau",cities:["Roseau","Mahaut","Calibishie","Marigot","Portsmouth"]},
+    {name:"El Salvador",flag:"🇸🇻",capital:"San Salvador",cities:["San Salvador","Soyapango","Santa Ana","San Miguel","Mejicanos","Apopa","Delgado"]},
+    {name:"Estados Unidos",flag:"🇺🇸",capital:"Washington D.C.",cities:["Washington D.C.","Nueva York","Los Ángeles","Chicago","Houston","Filadelfia","Phoenix","San Antonio","San Diego","Dallas","San José","Austin","Jacksonville","San Francisco","Columbus","Indianapolis","Seattle","Denver","Nashville","Míami","Atlanta","Boston","Las Vegas","Mineápolis","Portland","Memphis","Louisville","Baltimore","Milwaukee","Albuquerque","Tucson","Fresno","Sacramento","Long Beach","Kansas City","Mesa","Virginia Beach","Atlanta","Raleigh","Colorado Springs","Omaha","Cleveland","Tulsa","Minneapolis","Honolulu","Juneau","Anchorage","Nueva Orleans"]},
+    {name:"Granada",flag:"🇬🇩",capital:"Saint George's",cities:["Saint George's","Gouyave","Grenville","Victoria"]},
+    {name:"Guatemala",flag:"🇬🇹",capital:"Ciudad de Guatemala",cities:["Ciudad de Guatemala","Mixco","Villa Nueva","Quetzaltenango","San Juan Sacatepéquez","Villa Canales","Escuintla","Antigua Guatemala","Cobán","Huehuetenango","Chiquimula"]},
+    {name:"Haití",flag:"🇭🇹",capital:"Puerto Príncipe",cities:["Puerto Príncipe","Carrefour","Delmas","Pétionville","Gonaïves","Cap-Haïtien","Jacmel","Les Cayes"]},
+    {name:"Honduras",flag:"🇭🇳",capital:"Tegucigalpa",cities:["Tegucigalpa","San Pedro Sula","La Ceiba","Choloma","El Progreso","Comayagua","Puerto Cortés","Danlí","Juticalpa"]},
+    {name:"Jamaica",flag:"🇯🇲",capital:"Kingston",cities:["Kingston","Montego Bay","Portmore","Spanish Town","Mandeville","May Pen","Ocho Ríos"]},
+    {name:"México",flag:"🇲🇽",capital:"Ciudad de México",cities:["Ciudad de México","Guadalajara","Monterrey","Puebla","Toluca","Tijuana","León","Juárez","Torreón","Querétaro","San Luis Potosí","Mérida","Mexicali","Aguascalientes","Cuernavaca","Tampico","Veracruz","Chihuahua","Hermosillo","Saltillo","Morelia","Culiacán","Acapulco","Cancún","Reynosa","Matamoros","Mazatlán","Villahermosa","Xalapa","Oaxaca","Tuxtla Gutiérrez","Durango","San Cristóbal de las Casas","Chetumal"]},
+    {name:"Nicaragua",flag:"🇳🇮",capital:"Managua",cities:["Managua","León","Masaya","Matagalpa","Granada","Chinandega","Estelí","Jinotega"]},
+    {name:"Panamá",flag:"🇵🇦",capital:"Ciudad de Panamá",cities:["Ciudad de Panamá","San Miguelito","Tocumen","David","Arraiján","La Chorrera","Colón","Penonomé","Santiago","Chitré"]},
+    {name:"R. Dominicana",flag:"🇩🇴",capital:"Santo Domingo",cities:["Santo Domingo","Santiago de los Caballeros","La Romana","San Pedro de Macorís","San Francisco de Macorís","La Vega","San Cristóbal","Puerto Plata","Higüey","Moca"]},
+    {name:"San Cristóbal y Nieves",flag:"🇰🇳",capital:"Basseterre",cities:["Basseterre","Charlestown","Sandy Point"]},
+    {name:"San Vicente y las Granadinas",flag:"🇻🇨",capital:"Kingstown",cities:["Kingstown","Georgetown","Chateaubelair"]},
+    {name:"Santa Lucía",flag:"🇱🇨",capital:"Castries",cities:["Castries","Soufrière","Vieux Fort","Micoud"]},
+    {name:"Trinidad y Tobago",flag:"🇹🇹",capital:"Puerto España",cities:["Puerto España","San Fernando","Chaguanas","Mon Repos","Arima","Point Fortin"]},
+  ]},
+
+  {id:"oc",name:"Oceanía",icon:"🌏",color:"#ff7eb3",countries:[
+    {name:"Australia",flag:"🇦🇺",capital:"Canberra",cities:["Canberra","Sídney","Melbourne","Brisbane","Perth","Adelaide","Gold Coast","Newcastle","Sunshine Coast","Wollongong","Hobart","Geelong","Townsville","Cairns","Darwin","Toowoomba","Ballarat","Bendigo","Albury"]},
+    {name:"Fiyi",flag:"🇫🇯",capital:"Suva",cities:["Suva","Lautoka","Nadi","Labasa","Ba","Levuka"]},
+    {name:"Islas Marshall",flag:"🇲🇭",capital:"Majuro",cities:["Majuro","Ebeye","Jabor"]},
+    {name:"Islas Salomón",flag:"🇸🇧",capital:"Honiara",cities:["Honiara","Gizo","Auki","Kirakira"]},
+    {name:"Kiribati",flag:"🇰🇮",capital:"Tarawa del Sur",cities:["Tarawa del Sur","Betio","Bikenibeu"]},
+    {name:"Micronesia",flag:"🇫🇲",capital:"Palikir",cities:["Palikir","Weno","Tofol","Colonia"]},
+    {name:"Nauru",flag:"🇳🇷",capital:"Yaren (de facto)",cities:["Yaren","Aiwo","Denigomodu","Meneng"]},
+    {name:"Nueva Zelanda",flag:"🇳🇿",capital:"Wellington",cities:["Wellington","Auckland","Christchurch","Hamilton","Tauranga","Napier-Hastings","Dunedin","Palmerston North","Nelson","Rotorua","Queenstown","Whangarei"]},
+    {name:"Palaos",flag:"🇵🇼",capital:"Ngerulmud",cities:["Ngerulmud","Koror","Meyungs","Airai"]},
+    {name:"Papúa Nueva Guinea",flag:"🇵🇬",capital:"Port Moresby",cities:["Port Moresby","Lae","Mount Hagen","Madang","Wewak","Goroka","Rabaul"]},
+    {name:"Samoa",flag:"🇼🇸",capital:"Apia",cities:["Apia","Vaitele","Faleula","Faleasiu"]},
+    {name:"Tonga",flag:"🇹🇴",capital:"Nukualofa",cities:["Nukualofa","Neiafu","Haveluloto","Tofoa"]},
+    {name:"Tuvalu",flag:"🇹🇻",capital:"Funafuti",cities:["Funafuti","Vaiaku","Alapi","Senala"]},
+    {name:"Vanuatu",flag:"🇻🇺",capital:"Port Vila",cities:["Port Vila","Luganville","Isangel","Sola"]},
+  ]},
+
+  {id:"sa",name:"América del Sur",icon:"🌎",color:"#ff6b6b",countries:[
+    {name:"Argentina",flag:"🇦🇷",capital:"Buenos Aires",cities:["Buenos Aires","Córdoba","Rosario","Mendoza","San Miguel de Tucumán","La Plata","Mar del Plata","Quilmes","Salta","Santa Fe","San Juan","Resistencia","Neuquén","Formosa","Paraná","Río Gallegos","Ushuaia","Bariloche","Mendoza","Jujuy","Posadas"]},
+    {name:"Bolivia",flag:"🇧🇴",capital:"Sucre (const.) / La Paz (ejecutiva)",cities:["Sucre","La Paz","El Alto","Cochabamba","Santa Cruz de la Sierra","Oruro","Potosí","Tarija","Trinidad","Riberalta"]},
+    {name:"Brasil",flag:"🇧🇷",capital:"Brasilia",cities:["Brasilia","São Paulo","Río de Janeiro","Salvador","Fortaleza","Belo Horizonte","Manaos","Curitiba","Recife","Porto Alegre","Belém","Goiânia","Guarulhos","Campinas","São Luís","Maceió","Natal","Teresina","Campo Grande","João Pessoa","Duque de Caxias","Nova Iguaçu","São Bernardo do Campo","Florianópolis","Cuiabá","Macapá","Boa Vista"]},
+    {name:"Chile",flag:"🇨🇱",capital:"Santiago",cities:["Santiago","Valparaíso","Concepción","La Serena","Antofagasta","Temuco","Iquique","Rancagua","Talca","Arica","Punta Arenas","Puerto Montt","Calama","Osorno","Viña del Mar","Copiapó","Valdivia","Curicó"]},
+    {name:"Colombia",flag:"🇨🇴",capital:"Bogotá",cities:["Bogotá","Medellín","Cali","Barranquilla","Cartagena","Cúcuta","Soledad","Ibagué","Bucaramanga","Soacha","Santa Marta","Villavicencio","Pereira","Bello","Manizales","Pasto","Montería","Valledupar","Armenia","Sincelejo","Neiva"]},
+    {name:"Ecuador",flag:"🇪🇨",capital:"Quito",cities:["Quito","Guayaquil","Cuenca","Santo Domingo","Machala","Portoviejo","Manta","Ambato","Esmeraldas","Ibarra","Loja","Riobamba","Durán","Babahoyo"]},
+    {name:"Guyana",flag:"🇬🇾",capital:"Georgetown",cities:["Georgetown","Linden","New Amsterdam","Anna Regina","Corriverton"]},
+    {name:"Paraguay",flag:"🇵🇾",capital:"Asunción",cities:["Asunción","Ciudad del Este","San Lorenzo","Luque","Capiatá","Lambaré","Fernando de la Mora","Limpio","Ñemby","Encarnación","Pedro Juan Caballero"]},
+    {name:"Perú",flag:"🇵🇪",capital:"Lima",cities:["Lima","Arequipa","Trujillo","Chiclayo","Piura","Iquitos","Cusco","Chimbote","Huancayo","Pucallpa","Tacna","Ica","Juliaca","Cajamarca","Puno","Ayacucho","Tarapoto"]},
+    {name:"Surinam",flag:"🇸🇷",capital:"Paramaribo",cities:["Paramaribo","Lelydorp","Nieuw Nickerie","Moengo","Nieuw Amsterdam"]},
+    {name:"Trinidad y Tobago",flag:"🇹🇹",capital:"Puerto España",cities:["Puerto España","San Fernando","Chaguanas","Arima"]},
+    {name:"Uruguay",flag:"🇺🇾",capital:"Montevideo",cities:["Montevideo","Salto","Ciudad de la Costa","Paysandú","Las Piedras","Rivera","Maldonado","Tacuarembó","Melo","Mercedes","Artigas","Minas"]},
+    {name:"Venezuela",flag:"🇻🇪",capital:"Caracas",cities:["Caracas","Maracaibo","Valencia","Barquisimeto","Maracay","Ciudad Guayana","Maturín","Barcelona","Cumaná","Mérida","San Cristóbal","Barinas","Punto Fijo","Acarigua","Puerto La Cruz"]},
+  ]}
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// QUIZ DATA
+// ════════════════════════════════════════════════════════════════════════
+const QUIZ_MODES = [
+  {
+    id:"capitals",name:"Capitales del Mundo",icon:"🏛️",color:"#4f9eff",
+    desc:"¿Cuál es la capital de este país?",
+    count:null // generated dynamically
+  },
+  {
+    id:"country_from_capital",name:"País por su Capital",icon:"🔍",color:"#3ecf8e",
+    desc:"¿A qué país pertenece esta capital?",
+    count:null
+  },
+  {
+    id:"continent",name:"Continente del País",icon:"🌐",color:"#c47aff",
+    desc:"¿En qué continente está este país?",
+    count:null
+  },
+  {
+    id:"city_country",name:"Ciudad y su País",icon:"🏙️",color:"#f0c040",
+    desc:"¿En qué país está esta ciudad?",
+    count:null
+  },
+  {
+    id:"flags",name:"Identifica la Bandera",icon:"🚩",color:"#ff7eb3",
+    desc:"¿A qué país pertenece esta bandera?",
+    count:null
+  },
+  {
+    id:"mixed",name:"Mixto · Todo en Uno",icon:"🎲",color:"#e8945a",
+    desc:"Mezcla de todos los tipos de preguntas",
+    count:null
+  }
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// GENERATE QUESTIONS FROM DATA
+// ════════════════════════════════════════════════════════════════════════
+function getAllCountries() {
+  return WORLD.flatMap(c => c.countries.map(co => ({...co, continent:c.name, continentId:c.id})));
+}
+
+function getAllCities() {
+  return WORLD.flatMap(c => c.countries.flatMap(co =>
+    co.cities.map(city => ({city, country:co.name, flag:co.flag, capital:co.capital, continent:c.name}))
+  ));
+}
+
+function getRandom(arr, n) {
+  const a = [...arr]; const r = [];
+  for(let i=0;i<n&&a.length;i++){const j=Math.floor(Math.random()*a.length);r.push(a.splice(j,1)[0]);}
+  return r;
+}
+
+function pickWrongOpts(pool, correct, key, n=3) {
+  const wrong = pool.filter(x => x[key] !== correct);
+  return getRandom(wrong, n).map(x => x[key]);
+}
+
+function makeOpts(correct, wrongs) {
+  const all = shuffle([correct, ...wrongs]);
+  return {opts: all, ans: all.indexOf(correct)};
+}
+
+function genCapitals(n=60) {
+  const countries = getAllCountries().filter(c=>c.capital && !c.capital.includes('Sin'));
+  return getRandom(countries, Math.min(n, countries.length)).map(c => {
+    const wrongs = pickWrongOpts(countries, c.capital, 'capital');
+    const {opts, ans} = makeOpts(c.capital, wrongs);
+    return {
+      type:"capitals", sub:"Capitales del Mundo",
+      q:`¿Cuál es la capital de ${c.flag} <b>${c.name}</b>?`,
+      flag: c.flag, opts, ans,
+      exp:`La capital de ${c.name} es <b>${c.capital}</b>. Está ubicada en ${c.continent}.`
+    };
+  });
+}
+
+function genCountryFromCapital(n=60) {
+  const countries = getAllCountries().filter(c=>c.capital && !c.capital.includes('/') && !c.capital.includes('Sin'));
+  return getRandom(countries, Math.min(n, countries.length)).map(c => {
+    const wrongs = pickWrongOpts(countries, c.name, 'name');
+    const {opts, ans} = makeOpts(c.name, wrongs);
+    return {
+      type:"country_from_capital", sub:"País por su Capital",
+      q:`<b>${c.capital}</b> es la capital de...`,
+      flag: null, opts, ans,
+      exp:`${c.capital} es la capital de <b>${c.name}</b> (${c.continent}).`
+    };
+  });
+}
+
+function genContinent(n=50) {
+  const countries = getAllCountries().filter(c=>c.continent !== "Antártida");
+  return getRandom(countries, Math.min(n, countries.length)).map(c => {
+    const continents = WORLD.map(w=>w.name).filter(n=>n!=="Antártida");
+    const wrongs = continents.filter(n=>n!==c.continent);
+    const sel = getRandom(wrongs.map(w=>w), 3);
+    const {opts, ans} = makeOpts(c.continent, sel);
+    return {
+      type:"continent", sub:"Continente del País",
+      q:`¿En qué continente se encuentra ${c.flag} <b>${c.name}</b>?`,
+      flag: null, opts, ans,
+      exp:`${c.name} se encuentra en <b>${c.continent}</b>. Capital: ${c.capital}.`
+    };
+  });
+}
+
+function genCityCountry(n=60) {
+  const allCities = getAllCities().filter(c => !c.city.toLowerCase().includes('base ') && c.city !== c.capital);
+  const countries = getAllCountries();
+  return getRandom(allCities, Math.min(n, allCities.length)).map(c => {
+    const wrongs = pickWrongOpts(countries, c.country, 'name');
+    const {opts, ans} = makeOpts(c.country, wrongs);
+    return {
+      type:"city_country", sub:"Ciudad y su País",
+      q:`¿En qué país se encuentra la ciudad de <b>${c.city}</b>?`,
+      flag: null, opts, ans,
+      exp:`${c.city} es una ciudad de <b>${c.country}</b> ${c.flag} (${c.continent}). Capital: ${c.capital}.`
+    };
+  });
+}
+
+function genFlags(n=50) {
+  const countries = getAllCountries().filter(c=>c.flag && c.flag !== '🏔️');
+  return getRandom(countries, Math.min(n, countries.length)).map(c => {
+    const wrongs = pickWrongOpts(countries, c.name, 'name');
+    const {opts, ans} = makeOpts(c.name, wrongs);
+    return {
+      type:"flags", sub:"Banderas del Mundo",
+      q:`¿A qué país pertenece esta bandera?`,
+      flag: c.flag, opts, ans,
+      exp:`Esta es la bandera de <b>${c.name}</b> ${c.flag}. Capital: ${c.capital}. Continente: ${c.continent}.`
+    };
+  });
+}
+
+function genMixed(n=80) {
+  const all = [
+    ...genCapitals(20),
+    ...genCountryFromCapital(20),
+    ...genCityCountry(20),
+    ...genContinent(10),
+    ...genFlags(10)
+  ];
+  return shuffle(all).slice(0, n);
+}
+
+function buildQuizQuestions(modeId) {
+  switch(modeId) {
+    case 'capitals': return genCapitals(80);
+    case 'country_from_capital': return genCountryFromCapital(80);
+    case 'continent': return genContinent(60);
+    case 'city_country': return genCityCountry(80);
+    case 'flags': return genFlags(70);
+    case 'mixed': return genMixed(100);
+    default: return genMixed(60);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// QUIZ STATE & LOGIC
+// ════════════════════════════════════════════════════════════════════════
+let QS = {modeId:null, questions:[], current:0, score:0, answered:[]};
+
+function buildModeGrid() {
+  const grid = document.getElementById('mode-grid');
+  grid.innerHTML = '';
+  QUIZ_MODES.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'mode-card';
+    el.style.setProperty('--mc', m.color);
+    el.innerHTML = `
+      <div class="mode-icon">${m.icon}</div>
+      <div class="mode-name">${m.name}</div>
+      <div class="mode-desc">${m.desc}</div>
+    `;
+    el.onclick = () => startMode(m.id);
+    grid.appendChild(el);
+  });
+}
+
+function startMode(modeId) {
+  QS = {modeId, questions: buildQuizQuestions(modeId), current:0, score:0, answered:[]};
+  document.getElementById('quiz-home').style.display = 'none';
+  document.getElementById('quiz-result').style.display = 'none';
+  document.getElementById('quiz-playing').style.display = 'block';
+  const mode = QUIZ_MODES.find(m=>m.id===modeId);
+  document.getElementById('q-mode-label').textContent = mode.icon + ' ' + mode.name;
+  renderQ();
+}
+
+function renderQ() {
+  const q = QS.questions[QS.current];
+  const total = QS.questions.length;
+  const pct = Math.round((QS.current/total)*100);
+  document.getElementById('q-counter').textContent = `${QS.current+1} / ${total}`;
+  document.getElementById('q-pct').textContent = pct + '%';
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('score-live').textContent = `${QS.score} ✓`;
+  document.getElementById('qcard-sub').textContent = q.sub;
+  document.getElementById('qcard-num').textContent = String(QS.current+1).padStart(2,'0');
+  document.getElementById('q-text').innerHTML = q.q;
+
+  const flagEl = document.getElementById('q-flag');
+  if(q.flag){flagEl.textContent=q.flag;flagEl.style.display='';}
+  else flagEl.style.display='none';
+
+  const hintEl = document.getElementById('q-hint');
+  hintEl.textContent='';hintEl.style.display='none';
+
+  document.getElementById('expl').className='expl';
+  document.getElementById('expl').innerHTML='';
+  document.getElementById('next-btn').className='next-btn';
+
+  const optsEl = document.getElementById('opts');
+  optsEl.innerHTML='';
+  const letters=['A','B','C','D'];
+  q.opts.forEach((o,i)=>{
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.innerHTML=`<span class="opt-l">${letters[i]}</span>${o}`;
+    btn.onclick=()=>checkQ(i);
+    optsEl.appendChild(btn);
+  });
+
+  const card = document.getElementById('qcard');
+  card.style.animation='none';card.offsetHeight;card.style.animation='';
+}
+
+function checkQ(chosen) {
+  const q = QS.questions[QS.current];
+  const isOk = chosen === q.ans;
+  if(isOk) QS.score++;
+  QS.answered.push(isOk);
+
+  const btns = document.querySelectorAll('#opts .opt');
+  btns.forEach(b=>b.disabled=true);
+  btns[chosen].classList.add(isOk?'correct':'wrong');
+  if(!isOk) btns[q.ans].classList.add('correct');
+
+  const expl = document.getElementById('expl');
+  expl.innerHTML = q.exp;
+  expl.className = `expl ${isOk?'':'wrong-e'} show`;
+
+  document.getElementById('score-live').textContent=`${QS.score} ✓`;
+
+  const nb = document.getElementById('next-btn');
+  nb.textContent = QS.current < QS.questions.length-1 ? 'Siguiente →' : 'Ver resultado →';
+  nb.className='next-btn show';
+}
+
+function nextQ() {
+  QS.current++;
+  if(QS.current>=QS.questions.length) showQResult();
+  else renderQ();
+}
+
+function showQResult() {
+  document.getElementById('quiz-playing').style.display='none';
+  const rs = document.getElementById('quiz-result');
+  rs.style.display='flex';
+
+  const total = QS.answered.length;
+  const grade = (QS.score/total)*10;
+  const pct = Math.round((QS.score/total)*100);
+
+  document.getElementById('grade-big').textContent = grade.toFixed(1);
+  document.getElementById('r-ok').textContent = QS.score;
+  document.getElementById('r-bad').textContent = total - QS.score;
+  document.getElementById('r-pct').textContent = pct + '%';
+
+  let title, msg;
+  if(grade>=9.5){title='¡Perfecto! 🏆';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. ¡Eres un experto en geografía mundial!`;}
+  else if(grade>=9){title='¡Excelente! ⭐';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. Conocimiento sobresaliente del mundo.`;}
+  else if(grade>=8){title='¡Muy bien! 👏';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. Sólido, con pocos puntos por mejorar.`;}
+  else if(grade>=7){title='Bien hecho 👍';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. Buen conocimiento geográfico.`;}
+  else if(grade>=6){title='Aprobado 📚';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. Aprobaste, pero hay margen de mejora.`;}
+  else {title='¡Sigue estudiando! 💪';msg=`${QS.score}/${total} · Calificación: ${grade.toFixed(1)}/10. Usa el Explorador para repasar y vuelve a intentarlo.`;}
+
+  document.getElementById('res-title').textContent = title;
+  document.getElementById('res-msg').textContent = msg;
+
+  const dg = document.getElementById('dot-grid');
+  dg.innerHTML='';
+  QS.answered.forEach(ok=>{
+    const d=document.createElement('div');
+    d.className=`rdot ${ok?'ok':'bad'}`;
+    dg.appendChild(d);
+  });
+}
+
+function retryMode() { startMode(QS.modeId); }
+
+function backToModes() {
+  document.getElementById('quiz-playing').style.display='none';
+  document.getElementById('quiz-result').style.display='none';
+  document.getElementById('quiz-home').style.display='block';
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// EXPLORER
+// ════════════════════════════════════════════════════════════════════════
+function buildExplorer() {
+  const wrap = document.getElementById('continents-wrap');
+  wrap.innerHTML = '';
+  WORLD.forEach(cont => {
+    const card = document.createElement('div');
+    card.className = 'cont-card';
+    card.style.setProperty('--cc', cont.color || '#4f9eff');
+    card.innerHTML = `
+      <div class="cont-header" onclick="toggleCont(this)">
+        <div class="cont-icon">${cont.icon}</div>
+        <div class="cont-info">
+          <div class="cont-name" style="color:${cont.color}">${cont.name}</div>
+          <div class="cont-meta">${cont.countries.length} países</div>
+        </div>
+        <div class="cont-arrow">▶</div>
+      </div>
+      <div class="cont-body">
+        ${cont.countries.map(co => `
+          <div class="country-item">
+            <div class="country-header" onclick="toggleCountry(this)" style="--cc:${cont.color}">
+              <div class="country-flag">${co.flag}</div>
+              <div class="country-name-wrap">
+                <div class="country-name">${co.name}</div>
+                <div class="country-cap">⭐ ${co.capital}</div>
+              </div>
+              <div class="country-arrow">▶</div>
+            </div>
+            <div class="city-list" style="--cc:${cont.color}">
+              ${co.cities.map(city => `
+                <div class="city-tag ${city===co.capital||co.capital.includes(city)?'capital':''}">
+                  ${city===co.capital||co.capital.includes(city)?'<span class="cap-star">⭐</span>':''}
+                  ${city}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function toggleCont(header) {
+  const arrow = header.querySelector('.cont-arrow');
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
+
+function toggleCountry(header) {
+  const arrow = header.querySelector('.country-arrow');
+  const cityList = header.nextElementSibling;
+  const isOpen = cityList.classList.contains('open');
+  cityList.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SEARCH
+// ════════════════════════════════════════════════════════════════════════
+function doSearch(val) {
+  const v = val.trim().toLowerCase();
+  const rw = document.getElementById('search-results-wrap');
+  const cw = document.getElementById('continents-wrap');
+
+  if(!v) {
+    rw.style.display='none';
+    rw.innerHTML='';
+    cw.style.display='grid';
+    return;
+  }
+
+  cw.style.display='none';
+  rw.style.display='block';
+  rw.innerHTML='';
+
+  const results = [];
+
+  WORLD.forEach(cont => {
+    cont.countries.forEach(co => {
+      // country match
+      if(co.name.toLowerCase().includes(v) || co.capital.toLowerCase().includes(v)) {
+        results.push({
+          flag: co.flag, name: co.name,
+          meta: `Capital: ${co.capital} · ${cont.name}`,
+          badge: cont.name, color: cont.color
+        });
+      }
+      // city match
+      co.cities.forEach(city => {
+        if(city.toLowerCase().includes(v) && !co.name.toLowerCase().includes(v)) {
+          results.push({
+            flag: co.flag, name: city,
+            meta: `${co.name} · ${cont.name}${city===co.capital?'  · ⭐ Capital':''}`,
+            badge: co.name, color: cont.color
+          });
+        }
+      });
+    });
+  });
+
+  if(results.length === 0) {
+    rw.innerHTML = `<div style="color:var(--muted);font-size:14px;padding:20px 0;">No se encontraron resultados para "<b>${val}</b>"</div>`;
+    return;
+  }
+
+  results.slice(0, 40).forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'search-result-item';
+    el.innerHTML = `
+      <div class="sri-flag">${r.flag}</div>
+      <div class="sri-info">
+        <div class="sri-name">${r.name}</div>
+        <div class="sri-meta">${r.meta}</div>
+      </div>
+      <div class="sri-badge" style="border-color:${r.color};color:${r.color}">${r.badge}</div>
+    `;
+    rw.appendChild(el);
+  });
+
+  if(results.length > 40) {
+    rw.innerHTML += `<div style="color:var(--muted);font-size:13px;padding:10px 0;">...y ${results.length-40} resultados más. Refina tu búsqueda.</div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  if(id==='quiz') tabs[0].classList.add('active');
+  else tabs[1].classList.add('active');
+}
+
+function toast(msg) {
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+// ── INIT ──
+buildModeGrid();
+buildExplorer();
+</script>
+</body>
+</html>
